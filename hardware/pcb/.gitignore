@@ -1,0 +1,8 @@
+fp-info-cache
+*-backups
+*.net
+*.kicad_prl
+*.bak
+.history
+*.lck
+gerber

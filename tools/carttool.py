@@ -5,14 +5,15 @@ import hid
 import mcp2210
 
 from loguru import logger
-from mcp2210 import Mcp2210GpioDirection, Mcp2210GpioDesignation
+from mcp2210.mcp2210 import Mcp2210GpioDirection, Mcp2210GpioDesignation
 
 from .types import hex_integer
+from .argparse_tree import Argument, LeafCommand, Command, make_parser
 
 PROGRAM_NAME = "carttool.py"
 
-USB_VID = 0x1d50
-USB_PID = 0x6267
+USB_VID = 0x04D8
+USB_PID = 0xE429
 
 MCP2210_IO_CONFIG_COMMAND = bytes.fromhex(
     "60 20 00 00 " # Set Chip NVRAM Power-up Default
@@ -63,13 +64,29 @@ class Cartridge:
         )
 
     @staticmethod
-    def list_serials() -> list[str]:
+    def list_serials(vid: int = USB_VID, pid: int = USB_PID) -> list[str]:
         return [
             dev["serial_number"]
-            for dev in hid.enumerate(vendor_id=USB_VID, product_id=USB_PID)
+            for dev in hid.enumerate(vendor_id=vid, product_id=pid)
         ]
 
-    def program(self, image: bytes):
+    def program_flash(self, image: bytes):
+        logger.info("Configuring MCP2210 GPIO/SPI for programming the flash")
+        self._spi.set_spi_mode(3)
+        self._spi.set_gpio_direction(SS_PIN_NUMBER, Mcp2210GpioDirection.OUTPUT)
+        self._spi.set_gpio_direction(RESET_PIN_NUMBER, Mcp2210GpioDirection.OUTPUT)
+        self._spi.set_gpio_direction(CDONE_PIN_NUMBER, Mcp2210GpioDirection.OUTPUT)
+        self._spi.set_gpio_designation(SS_PIN_NUMBER, Mcp2210GpioDesignation.GPIO)
+        self._spi.set_gpio_designation(RESET_PIN_NUMBER, Mcp2210GpioDesignation.GPIO)
+        self._spi.set_gpio_designation(CDONE_PIN_NUMBER, Mcp2210GpioDesignation.GPIO)
+        logger.info("Resetting the flash...")
+        self._spi.set_gpio_output_value(RESET_PIN_NUMBER, False)
+        self._spi.set_gpio_output_value(SS_PIN_NUMBER, True)
+        time.sleep(1e-3)
+        logger.info("Starting writes to flash...")
+
+
+    def program_fpga(self, image: bytes):
         logger.info("Configuring MCP2210 GPIO/SPI for programming the FPGA")
         self._spi.set_spi_mode(3)
         self._spi.set_gpio_direction(SS_PIN_NUMBER, Mcp2210GpioDirection.OUTPUT)
@@ -104,7 +121,7 @@ class Cartridge:
             logger.critical("CDONE still low, programming failed")
 
 
-def mcp2210_list(args: argparse.Namespace):
+def list_mcp2210(args: argparse.Namespace):
     devs = list(hid.enumerate(args.vendor_id, args.product_id))
     if not devs:
         logger.warning("No MCP2210 devices found")
@@ -113,7 +130,7 @@ def mcp2210_list(args: argparse.Namespace):
     for dev in devs:
         print(dev["serial_number"])
 
-def mcp2210_program(args: argparse.Namespace):
+def program_mcp2210(args: argparse.Namespace):
     assert len(MANUFACTURER_NAME) < (63-6)
     assert len(DEVICE_NAME) < (63-6)
     logger.info(f"Connecting to MCP2210 with USB VID:PID:SERIAL = {args.vendor_id}:{args.product_id}:{args.serial_number}")
@@ -142,48 +159,88 @@ def mcp2210_program(args: argparse.Namespace):
 
     logger.success(f"MCP2210 programming complete")
 
-def cart_list(args: argparse.Namespace):
-    for cart_serial in Cartridge.list_serials():
+def list_carts(args: argparse.Namespace):
+    for cart_serial in Cartridge.list_serials(vid=args.vendor_id, pid=args.product_id):
         print(cart_serial)
 
-def load_fpga(args: argparse.Namespace):
+def program_fpga(args: argparse.Namespace):
     pass
 
-def get_args():
-    parser = argparse.ArgumentParser(prog=PROGRAM_NAME)
-    subparsers = parser.add_subparsers(dest="cmd")
-    subparsers.required = True
-
-    mcp2210_parser = subparsers.add_parser("mcp2210")
-    mcp2210_parser.add_argument("--vendor-id", type=hex_integer, help=f"USB VID in hex (0x{USB_VID:04X} by default)", default=USB_VID, dest="vendor_id")
-    mcp2210_parser.add_argument("--product-id", type=hex_integer, help=f"USB PID in hex (0x{USB_PID:04x} by default)", default=USB_PID, dest="product_id")
-    mcp2210_subparsers = mcp2210_parser.add_subparsers(dest="mcp2210_cmd")
-    mcp2210_subparsers.required = True
-    mcp2210_list_parser = mcp2210_subparsers.add_parser("list")
-    mcp2210_list_parser.set_defaults(main_func=mcp2210_list)
-    mcp2210_program_parser = mcp2210_subparsers.add_parser("program")
-    mcp2210_program_parser.add_argument("--serial-number", type=str, required=True, dest="serial_number")
-    mcp2210_program_parser.set_defaults(main_func=mcp2210_program)
-
-    cart_parser = subparsers.add_parser("cart")
-    cart_parser.add_argument("--serial-number", type=str, default=None, dest="serial_number")
-    cart_subparsers = cart_parser.add_subparsers(dest="cart_cmd")
-    cart_subparsers.required = True
-    cart_list_parser = cart_subparsers.add_parser("list")
-    cart_list_parser.set_defaults(main_func=cart_list)
+def program_flash(args: argparse.Namespace):
+    pass
 
 
-    load_fpga_parser = cart_subparsers.add_parser('load-fpga')
-    load_fpga_parser.set_defaults(main_func=load_fpga)
-    load_fpga_parser.add_argument("--serial-number", required=True)
+def get_serial_number(args: argparse.Namespace) -> str | None:
+    if args.serial_number is not None:
+        return args.serial_number
+
+    serials = Cartridge.list_serials(vid=args.vendor_id, pid=args.product_id)
+    if not serials:
+        logger.error("No serial numbers found")
+        return None
+
+    if len(serials) > 1:
+        logger.error("Multiple serial numbers found:")
+        for serial in serials:
+            print(f"  {serial}")
+        return None
+
+    return serials[0]
+
+
+def get_args_decl():
+    desc = Command(
+        {
+            "list": Command(
+                {
+                    "cart": LeafCommand(
+                        list_carts,
+                        help="list connected carts",
+                    ),
+                    "mcp2210": LeafCommand(
+                        list_mcp2210,
+                        help="list connected MCP2210 devices",
+                    )
+                },
+                help="list connected devices",
+            ),
+            "program": Command(
+                {
+                    "mcp2210": LeafCommand(
+                        program_mcp2210,
+                        help="program connected MCP2210 device with cartridge default settings",
+                    ),
+                    "fpga": LeafCommand(
+                        program_fpga,
+                        help="program cartridge FPGA ephemerally",
+                    ),
+                    "flash": LeafCommand(
+                        program_flash,
+                        help="program cartridge flash memory",
+                    ),
+                },
+                help="program connected devices",
+            ),
+        },
+        [
+            Argument("--serial-number", dest="serial_number", default=None, help="the serial number of the MCP2210 (optional if only one is connected)"),
+            Argument("--vendor-id", type=hex_integer, help=f"USB vendor ID in hex (0x{USB_VID:04X} by default)", default=USB_VID, dest="vendor_id"),
+            Argument("--product-id", type=hex_integer, help=f"USB product ID in hex (0x{USB_PID:04x} by default)", default=USB_PID, dest="product_id"),
+        ],
+    )
+
+    parser = make_parser(PROGRAM_NAME, desc)
 
     args = parser.parse_args()
+    args.serial_number = get_serial_number(args)
     return args
 
 
 def main():
-    args = get_args()
-    args.main_func(args)
+    args = get_args_decl()
+
+    if args.serial_number is not None:
+        args.main_func(args)
 
 
 if __name__ == "__main__":

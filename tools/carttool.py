@@ -52,12 +52,12 @@ RESET_PIN_NUMBER = 1
 CDONE_PIN_NUMBER = 4
 
 class Cartridge:
-    _spi: mcp2210.Mcp2210
+    _spi: mcp2210.mcp2210.Mcp2210
     _serial_number: str
 
     def __init__(self, serial_number: str):
         self._serial_number = serial_number
-        self._spi = mcp2210.Mcp2210(
+        self._spi = mcp2210.mcp2210.Mcp2210(
             serial_number=self._serial_number,
             vendor_id=USB_VID,
             product_id=USB_PID
@@ -134,7 +134,7 @@ def program_mcp2210(args: argparse.Namespace):
     assert len(MANUFACTURER_NAME) < (63-6)
     assert len(DEVICE_NAME) < (63-6)
     logger.info(f"Connecting to MCP2210 with USB VID:PID:SERIAL = {args.vendor_id}:{args.product_id}:{args.serial_number}")
-    mcp = mcp2210.Mcp2210(
+    mcp = mcp2210.mcp2210.Mcp2210(
         serial_number=args.serial_number,
         vendor_id=args.vendor_id,
         product_id=args.product_id,
@@ -199,6 +199,7 @@ def get_args_decl():
                     ),
                     "mcp2210": LeafCommand(
                         list_mcp2210,
+                        defaults={"vendor_id": 0x04d8, "product_id": 0x00de},
                         help="list connected MCP2210 devices",
                     )
                 },
@@ -208,6 +209,7 @@ def get_args_decl():
                 {
                     "mcp2210": LeafCommand(
                         program_mcp2210,
+                        defaults={"vendor_id": 0x04d8, "product_id": 0x00de},
                         help="program connected MCP2210 device with cartridge default settings",
                     ),
                     "fpga": LeafCommand(

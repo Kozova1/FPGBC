@@ -17,12 +17,14 @@ class Argument:
 class LeafCommand:
     main_func: Callable[[argparse.Namespace], None]
     arguments: list[Argument] = field(default_factory=list)
+    defaults: dict[str, Any] = field(default_factory=dict)
     help: str | None = None
 
 @dataclass
 class Command:
     subcommands: dict[str, Command | LeafCommand]
     arguments: list[Argument] = field(default_factory=list)
+    defaults: dict[str, Any] = field(default_factory=dict)
     help: str | None = None
 
 def make_parser(name: str, cmd: Command | LeafCommand, parent_subparsers=None) -> argparse.ArgumentParser:
@@ -33,6 +35,8 @@ def make_parser(name: str, cmd: Command | LeafCommand, parent_subparsers=None) -
 
     for argument in cmd.arguments:
         parser.add_argument(argument.name, type=argument.type, help=argument.help, required=argument.required, default=argument.default)
+
+    parser.set_defaults(**cmd.defaults)
 
     if isinstance(cmd, LeafCommand):
         parser.set_defaults(main_func=cmd.main_func)

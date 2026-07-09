@@ -73,17 +73,17 @@ class Cartridge:
     def program_flash(self, image: bytes):
         logger.info("Configuring MCP2210 GPIO/SPI for programming the flash")
         self._spi.set_spi_mode(3)
-        self._spi.set_gpio_direction(SS_PIN_NUMBER, Mcp2210GpioDirection.OUTPUT)
-        self._spi.set_gpio_direction(RESET_PIN_NUMBER, Mcp2210GpioDirection.OUTPUT)
-        self._spi.set_gpio_direction(CDONE_PIN_NUMBER, Mcp2210GpioDirection.OUTPUT)
-        self._spi.set_gpio_designation(SS_PIN_NUMBER, Mcp2210GpioDesignation.GPIO)
+        self._spi.set_gpio_designation(SS_PIN_NUMBER, Mcp2210GpioDesignation.CHIP_SELECT)
         self._spi.set_gpio_designation(RESET_PIN_NUMBER, Mcp2210GpioDesignation.GPIO)
-        self._spi.set_gpio_designation(CDONE_PIN_NUMBER, Mcp2210GpioDesignation.GPIO)
+        self._spi.set_gpio_direction(RESET_PIN_NUMBER, Mcp2210GpioDirection.OUTPUT)
         logger.info("Resetting the flash...")
         self._spi.set_gpio_output_value(RESET_PIN_NUMBER, False)
-        self._spi.set_gpio_output_value(SS_PIN_NUMBER, True)
+        time.sleep(1e-3)
+        logger.info("Waking flash up...")
+        print("res:", self._spi.spi_exchange(b'\xAB', 0))
         time.sleep(1e-3)
         logger.info("Starting writes to flash...")
+        print("res:", self._spi.spi_exchange(b'\x9f\x00\x00\x00', 0))
 
 
     def program_fpga(self, image: bytes):
@@ -167,7 +167,7 @@ def program_fpga(args: argparse.Namespace):
     pass
 
 def program_flash(args: argparse.Namespace):
-    pass
+    Cartridge(args.serial_number).program_flash(b'')
 
 
 def get_serial_number(args: argparse.Namespace) -> str | None:
@@ -199,7 +199,6 @@ def get_args_decl():
                     ),
                     "mcp2210": LeafCommand(
                         list_mcp2210,
-                        defaults={"vendor_id": 0x04d8, "product_id": 0x00de},
                         help="list connected MCP2210 devices",
                     )
                 },
@@ -209,7 +208,6 @@ def get_args_decl():
                 {
                     "mcp2210": LeafCommand(
                         program_mcp2210,
-                        defaults={"vendor_id": 0x04d8, "product_id": 0x00de},
                         help="program connected MCP2210 device with cartridge default settings",
                     ),
                     "fpga": LeafCommand(

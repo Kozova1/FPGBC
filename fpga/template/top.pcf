@@ -1,0 +1,104 @@
+set_io DATA[7] 48
+set_frequency DATA[7] 4
+
+set_io DATA[6] 47
+set_frequency DATA[6] 4
+
+set_io DATA[5] 46
+set_frequency DATA[5] 4
+
+set_io DATA[4] 45
+set_frequency DATA[4] 4
+
+set_io DATA[3] 43
+set_frequency DATA[3] 4
+
+set_io DATA[2] 42
+set_frequency DATA[2] 4
+
+set_io DATA[1] 38
+set_frequency DATA[1] 4
+
+set_io DATA[0] 37
+set_frequency DATA[0] 4
+
+set_io ADDRESS[15] 36
+set_frequency ADDRESS[15] 4
+
+set_io ADDRESS[14] 35
+set_frequency ADDRESS[14] 4
+
+set_io ADDRESS[13] 34
+set_frequency ADDRESS[13] 4
+
+set_io ADDRESS[12] 32
+set_frequency ADDRESS[12] 4
+
+set_io ADDRESS[11] 31
+set_frequency ADDRESS[11] 4
+
+set_io ADDRESS[10] 28
+set_frequency ADDRESS[10] 4
+
+set_io ADDRESS[9] 27
+set_frequency ADDRESS[9] 4
+
+set_io ADDRESS[8] 26
+set_frequency ADDRESS[8] 4
+
+set_io ADDRESS[7] 25
+set_frequency ADDRESS[7] 4
+
+set_io ADDRESS[6] 23
+set_frequency ADDRESS[6] 4
+
+set_io ADDRESS[5] 21
+set_frequency ADDRESS[5] 4
+
+set_io ADDRESS[4] 20
+set_frequency ADDRESS[4] 4
+
+set_io ADDRESS[3] 19
+set_frequency ADDRESS[3] 4
+
+set_io ADDRESS[2] 18
+set_frequency ADDRESS[2] 4
+
+set_io ADDRESS[1] 13
+set_frequency ADDRESS[1] 4
+
+set_io ADDRESS[0] 12
+set_frequency ADDRESS[0] 4
+
+set_io nRD 11
+set_frequency nRD 4
+
+set_io nWR 10
+set_frequency nWR 4
+
+set_io nRST 3
+set_frequency nRST 4
+
+set_io VIN 4
+set_frequency VIN 4
+
+set_io DIR_DATA 2
+set_frequency DIR_DATA 4
+
+set_io SPI_SCK 15
+set_frequency SPI_SCK 4
+
+set_io SPI_MOSI 14
+set_frequency SPI_MOSI 4
+
+set_io SPI_MISO 17
+set_frequency SPI_MISO 4
+
+set_io SPI_SS 16
+set_frequency SPI_SS 4
+
+set_io IO[1] 6
+set_frequency IO[1] 4
+
+set_io IO[0] 9
+set_frequency IO[0] 4

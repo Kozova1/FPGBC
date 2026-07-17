@@ -17,3 +17,8 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["tools/"]
+
+[dependency-groups]
+dev = [
+    "ipdb>=0.13.13",
+]

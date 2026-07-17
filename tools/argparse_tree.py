@@ -1,6 +1,6 @@
 import argparse
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, asdict
 from typing import Any
 
 
@@ -12,6 +12,8 @@ class Argument:
     help: str | None = None
     default: Any | None = None
     required: bool = False
+    action: str | None = None
+    nargs: str | None = None
 
 @dataclass
 class LeafCommand:
@@ -34,7 +36,13 @@ def make_parser(name: str, cmd: Command | LeafCommand, parent_subparsers=None) -
         parser = argparse.ArgumentParser(prog=name)
 
     for argument in cmd.arguments:
-        parser.add_argument(argument.name, type=argument.type, help=argument.help, required=argument.required, default=argument.default)
+        args = asdict(argument)
+        del args["name"]
+        if args["type"] is None:
+            del args["type"]
+        if args["nargs"] is None:
+            del args["nargs"]
+        parser.add_argument(argument.name, **args)
 
     parser.set_defaults(**cmd.defaults)
 
